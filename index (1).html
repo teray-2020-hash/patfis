@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Тренажёр</title>
+<style>
+  /* ===== Цвета и шрифт: меняйте здесь ===== */
+  :root {
+    --bg: #eef2f4; --card: #ffffff; --text: #17252b; --muted: #5d6f77;
+    --line: #d3dde1; --accent: #0f6b78; --accent-text: #ffffff;
+    --ok: #1d7a46; --ok-bg: #e0f3e8; --bad: #b3261e; --bad-bg: #fbe4e2;
+    --font: "Segoe UI", system-ui, -apple-system, Roboto, Arial, sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #11191c; --card: #1a262b; --text: #e6eef0; --muted: #93a6ad;
+      --line: #2b3b41; --accent: #4cc0cf; --accent-text: #08242a;
+      --ok: #62d08f; --ok-bg: #173a27; --bad: #ff8a80; --bad-bg: #4a2220;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font-family: var(--font); line-height: 1.5; }
+  main { max-width: 720px; margin: 0 auto; padding: 20px 16px 60px; }
+  h1 { font-size: 1.6rem; margin: 8px 0 4px; }
+  h2 { font-size: 1.2rem; margin: 0 0 12px; line-height: 1.4; }
+  .muted { color: var(--muted); font-size: .92rem; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 18px; margin-top: 14px; }
+  .hidden { display: none !important; }
+
+  button { font: inherit; cursor: pointer; border-radius: 8px; border: 1px solid var(--line);
+           background: var(--card); color: var(--text); padding: 10px 16px; }
+  button:hover { border-color: var(--accent); }
+  button:focus-visible, label:focus-within { outline: 2px solid var(--accent); outline-offset: 2px; }
+  button.primary { background: var(--accent); color: var(--accent-text); border-color: var(--accent); font-weight: 600; }
+  button:disabled { opacity: .45; cursor: default; }
+  .row { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 16px; }
+
+  /* блок с контактом */
+  .contact { border: 1px solid var(--accent); border-radius: 12px; padding: 12px 16px; margin-bottom: 8px; font-size: .95rem; }
+  .contact a { color: var(--accent); font-weight: 600; }
+
+  /* меню */
+  #testList { display: grid; gap: 10px; margin-top: 14px; }
+  #testList button { text-align: left; padding: 14px 16px; display: flex; justify-content: space-between; }
+
+  /* вопрос */
+  .top { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+  .opt { display: flex; gap: 10px; align-items: flex-start; padding: 11px 12px; margin-top: 8px;
+         border: 1px solid var(--line); border-radius: 8px; cursor: pointer; }
+  .opt input { margin-top: 5px; }
+  .opt.ok { background: var(--ok-bg); border-color: var(--ok); }
+  .opt.bad { background: var(--bad-bg); border-color: var(--bad); }
+  .opt.missed { border-style: dashed; border-color: var(--ok); }
+  #feedback { margin-top: 12px; font-weight: 600; }
+  #feedback.ok { color: var(--ok); } #feedback.bad { color: var(--bad); }
+
+  /* список вопросов */
+  #grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(44px, 1fr)); gap: 6px; margin-top: 12px; }
+  #grid button { padding: 8px 0; text-align: center; }
+  #grid button.ok { background: var(--ok-bg); border-color: var(--ok); }
+  #grid button.bad { background: var(--bad-bg); border-color: var(--bad); }
+  #grid button.cur { outline: 2px solid var(--accent); }
+
+  /* результат */
+  .score { font-size: 2.4rem; font-weight: 700; margin: 4px 0; }
+  .mistake { border-top: 1px solid var(--line); padding: 10px 0; }
+</style>
+</head>
+<body>
+<main>
+
+  <!-- ЭКРАН 1: меню -->
+  <section id="menu">
+    <div class="contact">
+      Нашли ошибку в тесте или проблему с сайтом? Напишите мне в Telegram:
+      <a href="https://t.me/WakizashiNorth" target="_blank" rel="noopener">t.me/WakizashiNorth</a>
+    </div>
+    <h1>Тренажёр</h1>
+    <!-- Измените этот текст на свой -->
+    <p class="muted">Выберите тест. Звёздочкой помечены актуальные.</p>
+    <div id="testList"></div>
+  </section>
+
+  <!-- ЭКРАН 2: тест -->
+  <section id="quiz" class="hidden">
+    <div class="top">
+      <button id="toMenu1">← К тестам</button>
+      <span class="muted" id="counter"></span>
+    </div>
+
+    <div class="card">
+      <h2 id="qText"></h2>
+      <div id="options"></div>
+      <div id="feedback"></div>
+      <div class="muted" id="explain"></div>
+      <div class="row">
+        <button class="primary" id="checkBtn">Проверить</button>
+        <button id="nextBtn">Следующий вопрос</button>
+        <button id="listBtn">Список вопросов</button>
+        <button id="finishBtn">Завершить тест</button>
+      </div>
+      <div id="grid" class="hidden"></div>
+    </div>
+  </section>
+
+  <!-- ЭКРАН 3: результат -->
+  <section id="result" class="hidden">
+    <div class="card">
+      <h2>Результат</h2>
+      <div class="score" id="score"></div>
+      <div class="muted" id="scoreNote"></div>
+      <div class="row">
+        <button class="primary" id="retryBtn">Пройти заново</button>
+        <button id="toMenu2">Вернуться в меню</button>
+      </div>
+      <div id="mistakes"></div>
+    </div>
+  </section>
+
+</main>
+
+<script src="questions.js"></script>
+<script>
+(function () {
+  const $ = (id) => document.getElementById(id);
+  const screens = ["menu", "quiz", "result"];
+  let test = null;     // выбранный тест
+  let list = [];       // вопросы в текущем порядке
+  let idx = 0;         // номер текущего вопроса
+  let state = [];      // для каждого вопроса: { picked: [], checked: bool, ok: bool }
+
+  /* ---------- Случайный тест из всех тем ---------- */
+  const PER_TOPIC = 3;   // сколько вопросов брать из каждой темы (можно изменить)
+  const MIXED = { title: "Случайный тест: по " + PER_TOPIC + " из каждой темы", mixed: true };
+  function mixedQuestions() {
+    // из каждой темы берём PER_TOPIC случайных вопросов
+    return TESTS.flatMap((t) => shuffle(t.questions.slice()).slice(0, PER_TOPIC));
+  }
+
+  function show(name) {
+    screens.forEach((s) => $(s).classList.toggle("hidden", s !== name));
+    window.scrollTo(0, 0);
+  }
+
+  /* ---------- Меню ---------- */
+  function buildMenu() {
+    const box = $("testList");
+    box.innerHTML = "";
+    [MIXED, ...TESTS].forEach((t) => {
+      const b = document.createElement("button");
+      const name = document.createElement("span");
+      name.textContent = (t.star ? "★ " : "") + t.title;
+      const n = document.createElement("span");
+      n.className = "muted";
+      const count = t.mixed
+        ? TESTS.reduce((s, x) => s + Math.min(x.questions.length, PER_TOPIC), 0)
+        : t.questions.length;
+      n.textContent = count + " вопр.";
+      if (t.mixed) { b.style.borderColor = "var(--accent)"; b.style.fontWeight = "600"; }
+      b.append(name, n);
+      b.onclick = () => start(t);
+      box.appendChild(b);
+    });
+  }
+
+  /* ---------- Старт ---------- */
+  function shuffle(a) {                       // перемешивание Фишера–Йетса
+    for (let i = a.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [a[i], a[j]] = [a[j], a[i]];
+    }
+    return a;
+  }
+  function start(t) {
+    test = t;
+    list = t.mixed ? mixedQuestions() : t.questions.slice();
+    if (t.shuffle || t.mixed) shuffle(list);   // у случайного теста вопросы всегда перемешаны
+    state = list.map(() => ({ picked: [], checked: false, ok: false }));
+    idx = 0;
+    $("grid").classList.add("hidden");
+    show("quiz");
+    render();
+  }
+
+  /* ---------- Показ вопроса ---------- */
+  function render() {
+    const q = list[idx], st = state[idx];
+    const multi = q.correct.length > 1;
+    $("counter").textContent = (idx + 1) + "/" + list.length;
+    $("qText").textContent = q.q + (multi ? " (выберите все верные)" : "");
+    $("feedback").textContent = "";
+    $("feedback").className = "";
+    $("explain").textContent = "";
+
+    const box = $("options");
+    box.innerHTML = "";
+    q.options.forEach((text, i) => {
+      const label = document.createElement("label");
+      label.className = "opt";
+      const inp = document.createElement("input");
+      inp.type = multi ? "checkbox" : "radio";
+      inp.name = "opt";
+      inp.checked = st.picked.includes(i);
+      inp.disabled = st.checked;
+      inp.onchange = () => {
+        st.picked = [...box.querySelectorAll("input")]
+          .map((el, k) => (el.checked ? k : -1)).filter((k) => k >= 0);
+      };
+      const span = document.createElement("span");
+      span.textContent = text;
+      label.append(inp, span);
+      if (st.checked) {
+        const right = q.correct.includes(i), chosen = st.picked.includes(i);
+        if (chosen && right) label.classList.add("ok");
+        else if (chosen && !right) label.classList.add("bad");
+        else if (!chosen && right) label.classList.add("missed");
+      }
+      box.appendChild(label);
+    });
+
+    if (st.checked) showFeedback(q, st);
+    $("checkBtn").disabled = st.checked;
+    $("nextBtn").textContent = idx === list.length - 1 ? "К результату" : "Следующий вопрос";
+    buildGrid();
+  }
+
+  function showFeedback(q, st) {
+    $("feedback").textContent = st.ok ? "Верно" : "Неверно";
+    $("feedback").className = st.ok ? "ok" : "bad";
+    $("explain").textContent = q.explain || "";
+  }
+
+  /* ---------- Проверка ---------- */
+  function check() {
+    const q = list[idx], st = state[idx];
+    if (st.checked) return;
+    if (st.picked.length === 0) {
+      $("feedback").textContent = "Сначала выберите ответ";
+      $("feedback").className = "bad";
+      return;
+    }
+    const a = st.picked.slice().sort().join(",");
+    const b = q.correct.slice().sort().join(",");
+    st.ok = a === b;
+    st.checked = true;
+    render();
+  }
+
+  /* ---------- Список вопросов ---------- */
+  function buildGrid() {
+    const g = $("grid");
+    g.innerHTML = "";
+    list.forEach((_, i) => {
+      const b = document.createElement("button");
+      b.textContent = i + 1;
+      if (state[i].checked) b.classList.add(state[i].ok ? "ok" : "bad");
+      if (i === idx) b.classList.add("cur");
+      b.onclick = () => { idx = i; render(); };
+      g.appendChild(b);
+    });
+  }
+
+  /* ---------- Результат ---------- */
+  function finish() {
+    const answered = state.filter((s) => s.checked).length;
+    const correct = state.filter((s) => s.ok).length;
+    const pct = Math.round((correct / list.length) * 100);
+    $("score").textContent = correct + " из " + list.length + " (" + pct + "%)";
+    $("scoreNote").textContent = answered < list.length
+      ? "Не проверено вопросов: " + (list.length - answered) : "";
+
+    const box = $("mistakes");
+    box.innerHTML = "";
+    const wrong = list.filter((_, i) => state[i].checked && !state[i].ok);
+    if (wrong.length) {
+      const h = document.createElement("h2");
+      h.style.marginTop = "18px";
+      h.textContent = "Ошибки";
+      box.appendChild(h);
+      wrong.forEach((q) => {
+        const d = document.createElement("div");
+        d.className = "mistake";
+        const t = document.createElement("div");
+        t.textContent = q.q;
+        const a = document.createElement("div");
+        a.className = "muted";
+        a.textContent = "Верно: " + q.correct.map((i) => q.options[i]).join("; ");
+        d.append(t, a);
+        box.appendChild(d);
+      });
+    }
+    show("result");
+  }
+
+  /* ---------- Кнопки ---------- */
+  $("checkBtn").onclick = check;
+  $("nextBtn").onclick = () => { if (idx < list.length - 1) { idx++; render(); } else finish(); };
+  $("listBtn").onclick = () => $("grid").classList.toggle("hidden");
+  $("finishBtn").onclick = finish;
+  $("retryBtn").onclick = () => start(test);
+  $("toMenu1").onclick = $("toMenu2").onclick = () => show("menu");
+
+  buildMenu();
+})();
+</script>
+</body>
+</html>
